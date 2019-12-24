@@ -2,7 +2,7 @@ package net
 
 import (
 	"fmt"
-	"go_learn/utils"
+	"github.com/back0893/goTcp/utils"
 	"log"
 	"net"
 	"sync"
