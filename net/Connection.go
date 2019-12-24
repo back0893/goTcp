@@ -3,7 +3,7 @@ package net
 import (
 	"bufio"
 	"errors"
-	"go_learn/utils"
+	"github.com/back0893/goTcp/utils"
 	"log"
 	"net"
 	"sync"
