@@ -14,8 +14,8 @@ import (
 type Connection struct {
 	server            *Server
 	conn              *net.TCPConn
-	extraData         interface{} //连接保存额外信息
-	closeOnce         sync.Once   //关闭的唯一操作
+	extraData         *sync.Map //连接保存额外信息
+	closeOnce         sync.Once //关闭的唯一操作
 	closeFlag         int32
 	closeChan         chan bool
 	packetSendChan    chan IPacket
@@ -33,12 +33,19 @@ func newConn(conn *net.TCPConn, server *Server, conId uint32) *Connection {
 		packetSendChan:    make(chan IPacket, utils.GlobalConfig.PacketSendChanLimit),
 		packetReceiveChan: make(chan IPacket, utils.GlobalConfig.PacketReceiveChanLimit),
 		buffer:            bufio.NewReader(conn),
+		extraData:         &sync.Map{},
 	}
 	c.server.ConEvent.OnConnect(c)
 	return c
 }
-func (c *Connection) GetExtraData() interface{} {
+func (c *Connection) GetExtraData(key interface{}) (interface{}, bool) {
+	return c.extraData.Load(key)
+}
+func (c *Connection) GetExtraMap() *sync.Map {
 	return c.extraData
+}
+func (c *Connection) SetExtraData(key interface{}, value interface{}) {
+	c.extraData.Store(key, value)
 }
 func (c *Connection) GetBuffer() *bufio.Reader {
 	return c.buffer
