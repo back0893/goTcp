@@ -5,7 +5,10 @@ import (
 	"github.com/back0893/goTcp/utils"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -32,7 +35,7 @@ func (server *Server) GetConnections() *sync.Map {
 	return server.connections
 }
 func (server *Server) Run() {
-	s := fmt.Sprintf("%s:%d", utils.GlobalConfig.Ip, utils.GlobalConfig.Port)
+	s := fmt.Sprintf("%s:%d", utils.GlobalConfig.GetString("Ip"), utils.GlobalConfig.GetInt("Port"))
 	addr, err := net.ResolveTCPAddr("tcp", s)
 	if err != nil {
 		log.Print(err)
@@ -79,4 +82,13 @@ func (server *Server) Run() {
 func (server *Server) Stop() {
 	close(server.exitChan)
 	server.waitGroup.Wait()
+}
+
+func (server *Server) Listen() {
+	server.Run()
+	log.Println("接受停止或者ctrl-c停止")
+	chSign := make(chan os.Signal)
+	signal.Notify(chSign, syscall.SIGINT, syscall.SIGTERM)
+	log.Println("接受到信号:", <-chSign)
+	server.Stop()
 }

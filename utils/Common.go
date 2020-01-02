@@ -9,3 +9,7 @@ func AsyncDo(fn func(), wg *sync.WaitGroup) {
 		wg.Done()
 	}()
 }
+
+func LoadJson() {
+
+}

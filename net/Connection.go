@@ -29,8 +29,8 @@ func newConn(conn *net.TCPConn, server *Server, conId uint32) *Connection {
 		conn:              conn,
 		conId:             conId,
 		closeChan:         make(chan bool),
-		packetSendChan:    make(chan IPacket, utils.GlobalConfig.PacketSendChanLimit),
-		packetReceiveChan: make(chan IPacket, utils.GlobalConfig.PacketReceiveChanLimit),
+		packetSendChan:    make(chan IPacket, utils.GlobalConfig.GetInt("PacketSendChanLimit")),
+		packetReceiveChan: make(chan IPacket, utils.GlobalConfig.GetInt("packetReceiveChan")),
 		buffer:            bufio.NewReader(conn),
 	}
 	c.server.ConEvent.OnConnect(c)

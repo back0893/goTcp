@@ -1,48 +1,48 @@
 package utils
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"github.com/spf13/viper"
 	"log"
-	"os"
 )
 
 var GlobalConfig *Config
 
-func init() {
-	GlobalConfig = NewConfig()
-	GlobalConfig.Reload()
-}
-
 type Config struct {
-	PacketSendChanLimit    uint32 `json:"SendLimit"`
-	PacketReceiveChanLimit uint32 `json:"ReceiveLimit"`
-	Ip                     string `json:"ip"`
-	Port                   uint16 `json:"port"`
+	*viper.Viper
+	hook func(config *Config)
 }
 
 func NewConfig() *Config {
 	return &Config{
-		PacketReceiveChanLimit: 128,
-		PacketSendChanLimit:    128,
-		Ip:                     "0.0.0.0",
-		Port:                   8000,
+		Viper: viper.New(),
 	}
 }
+func init() {
+	GlobalConfig = NewConfig()
+}
 
-func (config *Config) Reload() {
-	file, err := os.Open("./app.json")
-	if err != nil {
-		log.Println("app.json不存在或者无法打开")
-		return
+/**
+自定义的在配置加载时的动作
+*/
+func (config *Config) Hook(hook func(config *Config)) {
+	config.hook = hook
+}
+func (config *Config) Load(configType string, configFile string) {
+	config.SetConfigType(configType)
+	config.SetConfigFile(configFile)
+	if err := config.ReadInConfig(); err != nil {
+		switch err.(type) {
+		case viper.ConfigFileNotFoundError:
+			log.Println("not found")
+		default:
+			panic(err)
+		}
 	}
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if err := json.Unmarshal(data, config); err != nil {
-		log.Println("json解析失败")
-		return
+	config.SetDefault("PacketReceiveChanLimit", 128)
+	config.SetDefault("PacketSendChanLimit", 128)
+	config.SetDefault("Ip", "0.0.0.0")
+	config.SetDefault("Port", 8001)
+	if config.hook != nil {
+		config.hook(config)
 	}
 }
