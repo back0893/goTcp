@@ -1,6 +1,7 @@
 package net
 
 import (
+	"context"
 	"fmt"
 	"github.com/back0893/goTcp/utils"
 	"log"
@@ -9,21 +10,19 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type Server struct {
-	waitGroup   *sync.WaitGroup //退出时平滑退出
-	exitChan    chan bool       //退出时直接关闭,所有监听都会收到
+	acceptChan  chan *net.TCPConn //退出时直接关闭,所有监听都会收到
 	protocol    IProtocol
 	ConEvent    IConEvent
 	connections *sync.Map
+	cancel      context.CancelFunc
 }
 
 func NewServer(event IConEvent) *Server {
 	return &Server{
-		waitGroup:   &sync.WaitGroup{},
-		exitChan:    make(chan bool),
+		acceptChan:  make(chan *net.TCPConn),
 		ConEvent:    event,
 		connections: &sync.Map{},
 	}
@@ -46,42 +45,46 @@ func (server *Server) Run() {
 		log.Print(err)
 		return
 	}
+	go server.accept(listner)
 
-	server.waitGroup.Add(1)
-	var conId uint32 = 0
+	/**
+	2020年1月14日 使用context改造
+	*/
+	ctx, cancel := context.WithCancel(context.Background())
+	server.cancel = cancel
+
 	go func() {
-		defer func() {
-			listner.Close()
-			server.waitGroup.Done()
-		}()
+		var conId uint32 = 0
 		for {
 			select {
-			case <-server.exitChan:
+			case err := <-ctx.Done():
+				log.Println(err)
 				return
+			case conn := <-server.acceptChan:
+				conId++
+				go func() {
+					con := newConn(ctx, conn, server, conId)
+					server.connections.Store(conId, con)
+					con.run()
+				}()
 			default:
 			}
-			//10秒过期,方便循环
-			listner.SetDeadline(time.Now().Add(10 * time.Second))
-			conn, err := listner.AcceptTCP()
-			if err != nil {
-				continue
-			}
-			conId++
-			server.waitGroup.Add(1)
-			go func() {
-				con := newConn(conn, server, conId)
-				server.connections.Store(conId, con)
-				con.run()
-				server.waitGroup.Done()
-			}()
 		}
 	}()
 	log.Printf("tcp监听:%s", s)
 }
-
+func (server *Server) accept(listener *net.TCPListener) {
+	defer listener.Close()
+	for {
+		conn, err := listener.AcceptTCP()
+		if err != nil {
+			continue
+		}
+		server.acceptChan <- conn
+	}
+}
 func (server *Server) Stop() {
-	close(server.exitChan)
-	server.waitGroup.Wait()
+	server.cancel()
 }
 
 func (server *Server) Listen() {

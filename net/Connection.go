@@ -2,6 +2,7 @@ package net
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"github.com/back0893/goTcp/utils"
 	"log"
@@ -12,6 +13,7 @@ import (
 )
 
 type Connection struct {
+	ctx               context.Context
 	server            *Server
 	conn              *net.TCPConn
 	extraData         *sync.Map //连接保存额外信息
@@ -24,8 +26,9 @@ type Connection struct {
 	buffer            *bufio.Reader //包装tcpConn,方便读取
 }
 
-func newConn(conn *net.TCPConn, server *Server, conId uint32) *Connection {
+func newConn(ctx context.Context, conn *net.TCPConn, server *Server, conId uint32) *Connection {
 	c := &Connection{
+		ctx:               ctx,
 		server:            server,
 		conn:              conn,
 		conId:             conId,
@@ -74,9 +77,9 @@ func (c *Connection) IsClosed() bool {
 	return atomic.LoadInt32(&c.closeFlag) == 1
 }
 func (c *Connection) run() {
-	utils.AsyncDo(c.ReadLoop, c.server.waitGroup)
-	utils.AsyncDo(c.WriteLoop, c.server.waitGroup)
-	utils.AsyncDo(c.HandLoop, c.server.waitGroup)
+	go c.ReadLoop()
+	go c.WriteLoop()
+	go c.HandLoop()
 }
 func (c *Connection) ReadLoop() {
 	defer func() {
@@ -87,7 +90,7 @@ func (c *Connection) ReadLoop() {
 	}()
 	for {
 		select {
-		case <-c.server.exitChan:
+		case <-c.ctx.Done():
 			return
 		case <-c.closeChan:
 			return
@@ -108,7 +111,7 @@ func (c *Connection) WriteLoop() {
 	}()
 	for {
 		select {
-		case <-c.server.exitChan:
+		case <-c.ctx.Done():
 			return
 		case <-c.closeChan:
 			return
@@ -134,7 +137,7 @@ func (c *Connection) HandLoop() {
 	}()
 	for {
 		select {
-		case <-c.server.exitChan:
+		case <-c.ctx.Done():
 			return
 		case <-c.closeChan:
 			return
