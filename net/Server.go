@@ -13,7 +13,8 @@ import (
 )
 
 type Server struct {
-	acceptChan  chan *net.TCPConn //退出时直接关闭,所有监听都会收到
+	acceptChan  chan *net.TCPConn //接受socket使用协成
+	waitGroup   *sync.WaitGroup
 	protocol    IProtocol
 	ConEvent    IConEvent
 	connections *sync.Map
@@ -22,6 +23,7 @@ type Server struct {
 
 func NewServer(event IConEvent) *Server {
 	return &Server{
+		waitGroup:   &sync.WaitGroup{},
 		acceptChan:  make(chan *net.TCPConn),
 		ConEvent:    event,
 		connections: &sync.Map{},
@@ -63,7 +65,8 @@ func (server *Server) Run() {
 			case conn := <-server.acceptChan:
 				conId++
 				go func() {
-					con := newConn(ctx, conn, server, conId)
+					con := newConn(ctx, conn, server.ConEvent, server.protocol, server.waitGroup, conId)
+					server.waitGroup.Add(1)
 					server.connections.Store(conId, con)
 					con.run()
 				}()

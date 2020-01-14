@@ -14,31 +14,35 @@ import (
 
 type Connection struct {
 	ctx               context.Context
-	server            *Server
 	conn              *net.TCPConn
+	wg                *sync.WaitGroup
 	extraData         *sync.Map //连接保存额外信息
 	closeOnce         sync.Once //关闭的唯一操作
 	closeFlag         int32
-	closeChan         chan bool
 	packetSendChan    chan IPacket
 	packetReceiveChan chan IPacket
 	conId             uint32
 	buffer            *bufio.Reader //包装tcpConn,方便读取
+	event             IConEvent
+	protocol          IProtocol
+	cancelFunc        context.CancelFunc
 }
 
-func newConn(ctx context.Context, conn *net.TCPConn, server *Server, conId uint32) *Connection {
+func newConn(ctx context.Context, conn *net.TCPConn, event IConEvent, protocol IProtocol, wg *sync.WaitGroup, conId uint32) *Connection {
 	c := &Connection{
-		ctx:               ctx,
-		server:            server,
 		conn:              conn,
 		conId:             conId,
-		closeChan:         make(chan bool),
+		wg:                wg,
 		packetSendChan:    make(chan IPacket, utils.GlobalConfig.GetInt("PacketSendChanLimit")),
 		packetReceiveChan: make(chan IPacket, utils.GlobalConfig.GetInt("packetReceiveChan")),
 		buffer:            bufio.NewReader(conn),
 		extraData:         &sync.Map{},
+		protocol:          protocol,
 	}
-	c.server.ConEvent.OnConnect(c)
+	ctx, cancel := context.WithCancel(ctx)
+	c.ctx = ctx
+	c.cancelFunc = cancel
+	c.event.OnConnect(ctx, c)
 	return c
 }
 func (c *Connection) GetExtraData(key interface{}) (interface{}, bool) {
@@ -56,19 +60,17 @@ func (c *Connection) GetBuffer() *bufio.Reader {
 func (c *Connection) GetId() uint32 {
 	return c.conId
 }
-func (c *Connection) GetServer() *Server {
-	return c.server
-}
 func (c *Connection) Close() {
 	//使用sync.Once确保关闭只能被执行一次,
 	c.closeOnce.Do(func() {
 		atomic.StoreInt32(&c.closeFlag, 1)
-		close(c.closeChan)
+		//最先执行执行的关闭
+		c.event.OnClose(c.ctx, c)
+
+		c.wg.Done()
+		c.cancelFunc()
 		close(c.packetSendChan)
 		close(c.packetReceiveChan)
-		c.server.ConEvent.OnClose(c)
-		//连接关闭时,删除.
-		c.server.connections.Delete(c.conId)
 		c.conn.Close()
 	})
 }
@@ -92,12 +94,10 @@ func (c *Connection) ReadLoop() {
 		select {
 		case <-c.ctx.Done():
 			return
-		case <-c.closeChan:
-			return
 		default:
 
 		}
-		p, err := c.server.protocol.UnPack(c)
+		p, err := c.protocol.UnPack(c)
 		if err != nil {
 			return
 		}
@@ -113,13 +113,11 @@ func (c *Connection) WriteLoop() {
 		select {
 		case <-c.ctx.Done():
 			return
-		case <-c.closeChan:
-			return
 		case p := <-c.packetSendChan:
 			if c.IsClosed() {
 				return
 			}
-			raw, err := c.server.protocol.Pack(p)
+			raw, err := c.protocol.Pack(p)
 			if err != nil {
 				return
 			}
@@ -139,13 +137,11 @@ func (c *Connection) HandLoop() {
 		select {
 		case <-c.ctx.Done():
 			return
-		case <-c.closeChan:
-			return
 		case p := <-c.packetReceiveChan:
 			if c.IsClosed() {
 				return
 			}
-			c.server.ConEvent.OnMessage(p, c)
+			c.event.OnMessage(c.ctx, p, c)
 		}
 	}
 }
@@ -172,8 +168,6 @@ func (c *Connection) AsyncWrite(p IPacket, timeout time.Duration) error {
 	} else {
 		select {
 		case c.packetSendChan <- p:
-			return nil
-		case <-c.closeChan:
 			return nil
 		case <-time.After(timeout):
 			return errors.New("发送超时")

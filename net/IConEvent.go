@@ -1,5 +1,7 @@
 package net
 
+import "context"
+
 /**
 连接成功的事件
 分别是
@@ -9,7 +11,7 @@ package net
 */
 
 type IConEvent interface {
-	OnConnect(connection *Connection)
-	OnMessage(p IPacket, connection *Connection)
-	OnClose(connection *Connection)
+	OnConnect(ctx context.Context, connection *Connection)
+	OnMessage(ctx context.Context, p IPacket, connection *Connection)
+	OnClose(ctx context.Context, connection *Connection)
 }
