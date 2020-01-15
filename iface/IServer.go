@@ -6,7 +6,6 @@ import (
 
 type IServer interface {
 	AddProtocol(protocol IProtocol)
-	AddConEvent(event IConEvent)
 	GetConnections() *sync.Map
 	StoreCon(connection IConnection)
 	DeleteCon(connection IConnection)

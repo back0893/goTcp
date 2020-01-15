@@ -12,11 +12,11 @@ import (
 3.连接关闭
 */
 
-type IConEvent interface {
+type IEventWatch interface {
 	AddConnect(func(ctx context.Context, connection IConnection))
 	Connect(ctx context.Context, connection IConnection)
-	AddMessage(func(ctx context.Context, connection IConnection))
-	Message(ctx context.Context, connection IConnection)
+	AddMessage(func(ctx context.Context, packet IPacket, connection IConnection))
+	Message(ctx context.Context, packet IPacket, connection IConnection)
 	AddClose(func(ctx context.Context, connection IConnection))
 	Close(ctx context.Context, connection IConnection)
 }

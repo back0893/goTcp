@@ -17,7 +17,7 @@ type Server struct {
 	acceptChan  chan *net.TCPConn //接受socket使用协成
 	waitGroup   *sync.WaitGroup
 	protocol    iface.IProtocol
-	ConEvent    iface.IConEvent
+	ConEvent    iface.IEventWatch
 	connections *sync.Map
 	ctxCancel   context.CancelFunc
 	ctx         context.Context
@@ -25,11 +25,23 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{
+	s := &Server{
 		waitGroup:   &sync.WaitGroup{},
 		acceptChan:  make(chan *net.TCPConn),
 		connections: &sync.Map{},
+		ConEvent:    NewEventWatch(),
 	}
+	/**
+	在事件上新增开始和结束的事件
+	为了给server的conns新增和删除链接
+	*/
+	s.ConEvent.AddConnect(func(ctx context.Context, connection iface.IConnection) {
+		s.connections.Store(connection.GetId(), connection)
+	})
+	s.ConEvent.AddClose(func(ctx context.Context, connection iface.IConnection) {
+		s.connections.Delete(connection.GetId())
+	})
+	return s
 }
 func (s *Server) AddProtocol(protocol iface.IProtocol) {
 	s.protocol = protocol
@@ -102,11 +114,10 @@ func (s *Server) Listen() {
 	s.Stop()
 }
 
-func (s *Server) AddConEvent(event iface.IConEvent) {
-	/**
-	这里需要为实践新增连接成功和连接关闭的事件
-	*/
-	s.ConEvent = event
+func (s *Server) AddEvent(event iface.IEvent) {
+	s.ConEvent.AddConnect(event.OnConnect)
+	s.ConEvent.AddMessage(event.OnMessage)
+	s.ConEvent.AddClose(event.OnClose)
 }
 
 func (s *Server) StoreCon(connection iface.IConnection) {

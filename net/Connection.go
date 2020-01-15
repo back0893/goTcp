@@ -24,12 +24,12 @@ type Connection struct {
 	packetReceiveChan chan iface.IPacket
 	conId             uint32
 	buffer            *bufio.Reader //包装tcpConn,方便读取
-	event             iface.IConEvent
+	event             iface.IEventWatch
 	protocol          iface.IProtocol
 	cancelFunc        context.CancelFunc
 }
 
-func newConn(ctx context.Context, conn *net.TCPConn, wg *sync.WaitGroup, event iface.IConEvent, protocol iface.IProtocol, conId uint32) *Connection {
+func newConn(ctx context.Context, conn *net.TCPConn, wg *sync.WaitGroup, event iface.IEventWatch, protocol iface.IProtocol, conId uint32) *Connection {
 	c := &Connection{
 		conn:              conn,
 		conId:             conId,
@@ -148,8 +148,7 @@ func (c *Connection) HandLoop() {
 			if c.IsClosed() {
 				return
 			}
-			messageCtx := context.WithValue(c.ctx, "packet", p)
-			c.event.Message(messageCtx, c)
+			c.event.Message(c.ctx, p, c)
 		}
 	}
 }
