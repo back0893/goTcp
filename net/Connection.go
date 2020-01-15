@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"github.com/back0893/goTcp/iface"
 	"github.com/back0893/goTcp/utils"
 	"log"
 	"net"
@@ -19,30 +20,29 @@ type Connection struct {
 	extraData         *sync.Map //连接保存额外信息
 	closeOnce         sync.Once //关闭的唯一操作
 	closeFlag         int32
-	packetSendChan    chan IPacket
-	packetReceiveChan chan IPacket
+	packetSendChan    chan iface.IPacket
+	packetReceiveChan chan iface.IPacket
 	conId             uint32
 	buffer            *bufio.Reader //包装tcpConn,方便读取
-	event             IConEvent
-	protocol          IProtocol
+	event             iface.IConEvent
+	protocol          iface.IProtocol
 	cancelFunc        context.CancelFunc
 }
 
-func newConn(ctx context.Context, conn *net.TCPConn, event IConEvent, protocol IProtocol, wg *sync.WaitGroup, conId uint32) *Connection {
+func newConn(ctx context.Context, conn *net.TCPConn, wg *sync.WaitGroup, event iface.IConEvent, protocol iface.IProtocol, conId uint32) *Connection {
 	c := &Connection{
 		conn:              conn,
 		conId:             conId,
-		wg:                wg,
-		packetSendChan:    make(chan IPacket, utils.GlobalConfig.GetInt("PacketSendChanLimit")),
-		packetReceiveChan: make(chan IPacket, utils.GlobalConfig.GetInt("packetReceiveChan")),
+		packetSendChan:    make(chan iface.IPacket, utils.GlobalConfig.GetInt("PacketSendChanLimit")),
+		packetReceiveChan: make(chan iface.IPacket, utils.GlobalConfig.GetInt("packetReceiveChan")),
 		buffer:            bufio.NewReader(conn),
 		extraData:         &sync.Map{},
+		wg:                wg,
+		event:             event,
 		protocol:          protocol,
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	c.ctx = ctx
-	c.cancelFunc = cancel
-	c.event.OnConnect(ctx, c)
+	c.wg.Add(1)
+	c.ctx, c.cancelFunc = context.WithCancel(ctx)
 	return c
 }
 func (c *Connection) GetExtraData(key interface{}) (interface{}, bool) {
@@ -65,7 +65,7 @@ func (c *Connection) Close() {
 	c.closeOnce.Do(func() {
 		atomic.StoreInt32(&c.closeFlag, 1)
 		//最先执行执行的关闭
-		c.event.OnClose(c.ctx, c)
+		c.event.Close(c.ctx, c)
 
 		c.wg.Done()
 		c.cancelFunc()
@@ -79,15 +79,18 @@ func (c *Connection) IsClosed() bool {
 	return atomic.LoadInt32(&c.closeFlag) == 1
 }
 func (c *Connection) run() {
-	go c.ReadLoop()
-	go c.WriteLoop()
-	go c.HandLoop()
+	c.event.Connect(c.ctx, c)
+	utils.AsyncDo(c.ReadLoop, c.wg)
+	utils.AsyncDo(c.WriteLoop, c.wg)
+	utils.AsyncDo(c.HandLoop, c.wg)
 }
 func (c *Connection) ReadLoop() {
 	defer func() {
 		//如果有错误产生,这里捕获
 		//防止整个服务退出
-		recover()
+		if err := recover(); err != nil {
+			log.Println(err)
+		}
 		c.Close()
 	}()
 	for {
@@ -106,7 +109,9 @@ func (c *Connection) ReadLoop() {
 }
 func (c *Connection) WriteLoop() {
 	defer func() {
-		recover()
+		if err := recover(); err != nil {
+			log.Println(err)
+		}
 		c.Close()
 	}()
 	for {
@@ -130,7 +135,9 @@ func (c *Connection) WriteLoop() {
 }
 func (c *Connection) HandLoop() {
 	defer func() {
-		recover()
+		if err := recover(); err != nil {
+			log.Println(err)
+		}
 		c.Close()
 	}()
 	for {
@@ -141,15 +148,16 @@ func (c *Connection) HandLoop() {
 			if c.IsClosed() {
 				return
 			}
-			c.event.OnMessage(c.ctx, p, c)
+			messageCtx := context.WithValue(c.ctx, "packet", p)
+			c.event.Message(messageCtx, c)
 		}
 	}
 }
 
-func (c *Connection) Write(p IPacket) error {
+func (c *Connection) Write(p iface.IPacket) error {
 	return c.AsyncWrite(p, 0)
 }
-func (c *Connection) AsyncWrite(p IPacket, timeout time.Duration) error {
+func (c *Connection) AsyncWrite(p iface.IPacket, timeout time.Duration) error {
 	if c.IsClosed() {
 		return errors.New("关闭")
 	}

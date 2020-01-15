@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"fmt"
+	"github.com/back0893/goTcp/iface"
 	"github.com/back0893/goTcp/utils"
 	"log"
 	"net"
@@ -15,86 +16,111 @@ import (
 type Server struct {
 	acceptChan  chan *net.TCPConn //接受socket使用协成
 	waitGroup   *sync.WaitGroup
-	protocol    IProtocol
-	ConEvent    IConEvent
+	protocol    iface.IProtocol
+	ConEvent    iface.IConEvent
 	connections *sync.Map
-	cancel      context.CancelFunc
+	ctxCancel   context.CancelFunc
+	ctx         context.Context
+	listener    *net.TCPListener
 }
 
-func NewServer(event IConEvent) *Server {
+func NewServer() *Server {
 	return &Server{
 		waitGroup:   &sync.WaitGroup{},
 		acceptChan:  make(chan *net.TCPConn),
-		ConEvent:    event,
 		connections: &sync.Map{},
 	}
 }
-func (server *Server) AddProtocol(protocol IProtocol) {
-	server.protocol = protocol
+func (s *Server) AddProtocol(protocol iface.IProtocol) {
+	s.protocol = protocol
 }
-func (server *Server) GetConnections() *sync.Map {
-	return server.connections
+func (s *Server) GetConnections() *sync.Map {
+	return s.connections
 }
-func (server *Server) Run() {
-	s := fmt.Sprintf("%s:%d", utils.GlobalConfig.GetString("Ip"), utils.GlobalConfig.GetInt("Port"))
-	addr, err := net.ResolveTCPAddr("tcp", s)
+func (s *Server) Run() {
+	str := fmt.Sprintf("%s:%d", utils.GlobalConfig.GetString("Ip"), utils.GlobalConfig.GetInt("Port"))
+	addr, err := net.ResolveTCPAddr("tcp", str)
 	if err != nil {
 		log.Print(err)
 		return
 	}
-	listner, err := net.ListenTCP("tcp", addr)
+	s.listener, err = net.ListenTCP("tcp", addr)
 	if err != nil {
 		log.Print(err)
 		return
 	}
-	go server.accept(listner)
+	go s.accept()
 
 	/**
 	2020年1月14日 使用context改造
 	*/
-	ctx, cancel := context.WithCancel(context.Background())
-	server.cancel = cancel
-
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	go func() {
 		var conId uint32 = 0
 		for {
 			select {
-			case err := <-ctx.Done():
-				log.Println(err)
+			case <-s.ctx.Done():
 				return
-			case conn := <-server.acceptChan:
+			case conn := <-s.acceptChan:
 				conId++
-				go func() {
-					con := newConn(ctx, conn, server.ConEvent, server.protocol, server.waitGroup, conId)
-					server.waitGroup.Add(1)
-					server.connections.Store(conId, con)
-					con.run()
-				}()
-			default:
+				con := newConn(s.ctx, conn, s.waitGroup, s.ConEvent, s.protocol, conId)
+				s.connections.Store(conId, con)
+				go con.run()
 			}
 		}
 	}()
-	log.Printf("tcp监听:%s", s)
+	log.Printf("tcp监听:%s", str)
 }
-func (server *Server) accept(listener *net.TCPListener) {
-	defer listener.Close()
+func (s *Server) accept() {
+	s.waitGroup.Add(1)
+	defer s.waitGroup.Done()
 	for {
-		conn, err := listener.AcceptTCP()
+		conn, err := s.listener.AcceptTCP()
 		if err != nil {
+			//这里如果服务器停止监听了会返回err
+			if err := s.ctx.Err(); err != nil {
+				log.Println("accept return ")
+				return
+			}
 			continue
 		}
-		server.acceptChan <- conn
+		s.acceptChan <- conn
 	}
 }
-func (server *Server) Stop() {
-	server.cancel()
+func (s *Server) Stop() {
+	s.listener.Close()
+	s.ctxCancel()
+	s.waitGroup.Wait()
 }
 
-func (server *Server) Listen() {
-	server.Run()
+func (s *Server) Listen() {
+	s.Run()
 	log.Println("接受停止或者ctrl-c停止")
 	chSign := make(chan os.Signal)
 	signal.Notify(chSign, syscall.SIGINT, syscall.SIGTERM)
 	log.Println("接受到信号:", <-chSign)
-	server.Stop()
+	s.Stop()
+}
+
+func (s *Server) AddConEvent(event iface.IConEvent) {
+	/**
+	这里需要为实践新增连接成功和连接关闭的事件
+	*/
+	s.ConEvent = event
+}
+
+func (s *Server) StoreCon(connection iface.IConnection) {
+	s.connections.Store(connection.GetId(), connection)
+}
+
+func (s *Server) DeleteCon(connection iface.IConnection) {
+	s.connections.Delete(connection.GetId())
+}
+
+func (s *Server) GetCon(id uint32) (con iface.IConnection, ok bool) {
+	val, ok := s.connections.Load(id)
+	if ok {
+		return val.(iface.IConnection), ok
+	}
+	return nil, ok
 }
