@@ -80,11 +80,11 @@ func (c *Connection) IsClosed() bool {
 }
 func (c *Connection) run() {
 	c.event.Connect(c.ctx, c)
-	utils.AsyncDo(c.ReadLoop, c.wg)
-	utils.AsyncDo(c.WriteLoop, c.wg)
-	utils.AsyncDo(c.HandLoop, c.wg)
+	utils.AsyncDo(c.readLoop, c.wg)
+	utils.AsyncDo(c.writeLoop, c.wg)
+	utils.AsyncDo(c.handLoop, c.wg)
 }
-func (c *Connection) ReadLoop() {
+func (c *Connection) readLoop() {
 	defer func() {
 		//如果有错误产生,这里捕获
 		//防止整个服务退出
@@ -107,7 +107,7 @@ func (c *Connection) ReadLoop() {
 		c.packetReceiveChan <- p
 	}
 }
-func (c *Connection) WriteLoop() {
+func (c *Connection) writeLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -133,7 +133,7 @@ func (c *Connection) WriteLoop() {
 
 	}
 }
-func (c *Connection) HandLoop() {
+func (c *Connection) handLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -180,4 +180,8 @@ func (c *Connection) AsyncWrite(p iface.IPacket, timeout time.Duration) error {
 			return errors.New("发送超时")
 		}
 	}
+}
+
+func (c *Connection) GetRawCon() net.Conn {
+	return c.conn
 }
