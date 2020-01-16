@@ -76,7 +76,6 @@ func (s *Server) Run() {
 			case conn := <-s.acceptChan:
 				conId++
 				con := newConn(s.ctx, conn, s.waitGroup, s.ConEvent, s.protocol, conId)
-				s.connections.Store(conId, con)
 				go con.run()
 			}
 		}
@@ -91,7 +90,6 @@ func (s *Server) accept() {
 		if err != nil {
 			//这里如果服务器停止监听了会返回err
 			if err := s.ctx.Err(); err != nil {
-				log.Println("accept return ")
 				return
 			}
 			continue
