@@ -14,16 +14,30 @@ import (
 )
 
 type Server struct {
-	acceptChan  chan *net.TCPConn //接受socket使用协成
-	waitGroup   *sync.WaitGroup
-	protocol    iface.IProtocol
-	ConEvent    iface.IEventWatch
-	connections *sync.Map
-	ctxCancel   context.CancelFunc
-	ctx         context.Context
-	listener    *net.TCPListener
+	acceptChan   chan *net.TCPConn //接受socket使用协成
+	waitGroup    *sync.WaitGroup
+	protocol     iface.IProtocol
+	ConEvent     iface.IEventWatch
+	connections  *sync.Map
+	ctxCancel    context.CancelFunc
+	ctx          context.Context
+	listener     *net.TCPListener
+	contextValue func(ctx context.Context) context.Context
 }
 
+func (s *Server) WithContextValue(fn func(ctx context.Context) context.Context) {
+	s.contextValue = fn
+}
+func (s *Server) context() {
+	/**
+	2020年1月14日 使用context改造
+	*/
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	if s.contextValue != nil {
+		s.ctx = s.contextValue(s.ctx)
+	}
+
+}
 func NewServer() *Server {
 	s := &Server{
 		waitGroup:   &sync.WaitGroup{},
@@ -63,10 +77,8 @@ func (s *Server) Run() {
 	}
 	go s.accept()
 
-	/**
-	2020年1月14日 使用context改造
-	*/
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	s.context()
+
 	go func() {
 		var conId uint32 = 0
 		for {
