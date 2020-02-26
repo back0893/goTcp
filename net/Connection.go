@@ -29,7 +29,7 @@ type Connection struct {
 	cancelFunc        context.CancelFunc
 }
 
-func newConn(ctx context.Context, conn *net.TCPConn, wg *sync.WaitGroup, event iface.IEventWatch, protocol iface.IProtocol, conId uint32) *Connection {
+func NewConn(ctx context.Context, conn *net.TCPConn, wg *sync.WaitGroup, event iface.IEventWatch, protocol iface.IProtocol, conId uint32) *Connection {
 	c := &Connection{
 		conn:              conn,
 		conId:             conId,
@@ -78,7 +78,7 @@ func (c *Connection) Close() {
 func (c *Connection) IsClosed() bool {
 	return atomic.LoadInt32(&c.closeFlag) == 1
 }
-func (c *Connection) run() {
+func (c *Connection) Run() {
 	c.event.Connect(c.ctx, c)
 	utils.AsyncDo(c.readLoop, c.wg)
 	utils.AsyncDo(c.writeLoop, c.wg)

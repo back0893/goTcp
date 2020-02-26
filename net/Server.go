@@ -2,7 +2,6 @@ package net
 
 import (
 	"context"
-	"fmt"
 	"github.com/back0893/goTcp/iface"
 	"github.com/back0893/goTcp/utils"
 	"log"
@@ -64,7 +63,7 @@ func (s *Server) GetConnections() *sync.Map {
 	return s.connections
 }
 func (s *Server) Run() {
-	str := fmt.Sprintf("%s:%d", utils.GlobalConfig.GetString("Ip"), utils.GlobalConfig.GetInt("Port"))
+	str := net.JoinHostPort(utils.GlobalConfig.GetString("Ip"), utils.GlobalConfig.GetString("Port"))
 	addr, err := net.ResolveTCPAddr("tcp", str)
 	if err != nil {
 		log.Print(err)
@@ -87,8 +86,8 @@ func (s *Server) Run() {
 				return
 			case conn := <-s.acceptChan:
 				conId++
-				con := newConn(s.ctx, conn, s.waitGroup, s.ConEvent, s.protocol, conId)
-				go con.run()
+				con := NewConn(s.ctx, conn, s.waitGroup, s.ConEvent, s.protocol, conId)
+				go con.Run()
 			}
 		}
 	}()
