@@ -15,6 +15,5 @@ type IServer interface {
 	Stop()
 	Listen()
 	AddEvent(event IEvent)
-	WithContextValue(func(ctx context.Context) context.Context) //对于上下文在服务的操作
-	GetContext() context.Context                                // 返回上下文.
+	GetContext() context.Context // 返回上下文.
 }

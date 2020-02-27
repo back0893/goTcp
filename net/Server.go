@@ -13,29 +13,16 @@ import (
 )
 
 type Server struct {
-	acceptChan   chan *net.TCPConn //接受socket使用协成
-	waitGroup    *sync.WaitGroup
-	protocol     iface.IProtocol
-	ConEvent     iface.IEventWatch
-	connections  *sync.Map
-	ctxCancel    context.CancelFunc
-	ctx          context.Context
-	listener     *net.TCPListener
-	contextValue func(ctx context.Context) context.Context
+	acceptChan  chan *net.TCPConn //接受socket使用协成
+	waitGroup   *sync.WaitGroup
+	protocol    iface.IProtocol
+	ConEvent    iface.IEventWatch
+	connections *sync.Map
+	ctxCancel   context.CancelFunc
+	ctx         context.Context
+	listener    *net.TCPListener
 }
 
-func (s *Server) WithContextValue(fn func(ctx context.Context) context.Context) {
-	s.contextValue = fn
-}
-func (s *Server) context() {
-	/**
-	2020年1月14日 使用context改造
-	*/
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	if s.contextValue != nil {
-		s.ctx = s.contextValue(s.ctx)
-	}
-}
 func (s *Server) GetContext() context.Context {
 	return s.ctx
 }
@@ -46,6 +33,7 @@ func NewServer() *Server {
 		connections: &sync.Map{},
 		ConEvent:    NewEventWatch(),
 	}
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	/**
 	在事件上新增开始和结束的事件
 	为了给server的conns新增和删除链接
@@ -77,9 +65,6 @@ func (s *Server) Run() {
 		return
 	}
 	go s.accept()
-
-	s.context()
-
 	go func() {
 		var conId uint32 = 0
 		for {
