@@ -18,4 +18,5 @@ type IConnection interface {
 	GetExtraMap() *sync.Map
 	Close()
 	IsClosed() bool
+	Run()
 }
