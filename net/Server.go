@@ -35,7 +35,9 @@ func (s *Server) context() {
 	if s.contextValue != nil {
 		s.ctx = s.contextValue(s.ctx)
 	}
-
+}
+func (s *Server) GetContext() context.Context {
+	return s.ctx
 }
 func NewServer() *Server {
 	s := &Server{
