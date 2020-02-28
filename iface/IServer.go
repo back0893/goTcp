@@ -11,9 +11,10 @@ type IServer interface {
 	StoreCon(connection IConnection)
 	DeleteCon(connection IConnection)
 	GetCon(id uint32) (IConnection, bool)
-	Run()
+	Run(ip string, port int)
 	Stop()
-	Listen()
+	Listen(ip string, port int)
 	AddEvent(event IEvent)
-	GetContext() context.Context // 返回上下文.
+	GetContext() context.Context    // 返回上下文.
+	SetContext(ctx context.Context) //设计上下文
 }

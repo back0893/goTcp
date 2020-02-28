@@ -3,11 +3,11 @@ package net
 import (
 	"context"
 	"github.com/back0893/goTcp/iface"
-	"github.com/back0893/goTcp/utils"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 )
@@ -25,6 +25,9 @@ type Server struct {
 
 func (s *Server) GetContext() context.Context {
 	return s.ctx
+}
+func (s *Server) SetContext(ctx context.Context) {
+	s.ctx, s.ctxCancel = context.WithCancel(ctx)
 }
 func NewServer() *Server {
 	s := &Server{
@@ -52,8 +55,8 @@ func (s *Server) AddProtocol(protocol iface.IProtocol) {
 func (s *Server) GetConnections() *sync.Map {
 	return s.connections
 }
-func (s *Server) Run() {
-	str := net.JoinHostPort(utils.GlobalConfig.GetString("Ip"), utils.GlobalConfig.GetString("Port"))
+func (s *Server) Run(ip string, port int) {
+	str := net.JoinHostPort(ip, strconv.Itoa(port))
 	addr, err := net.ResolveTCPAddr("tcp", str)
 	if err != nil {
 		log.Print(err)
@@ -101,8 +104,8 @@ func (s *Server) Stop() {
 	s.waitGroup.Wait()
 }
 
-func (s *Server) Listen() {
-	s.Run()
+func (s *Server) Listen(ip string, port int) {
+	s.Run(ip, port)
 	log.Println("接受停止或者ctrl-c停止")
 	chSign := make(chan os.Signal)
 	signal.Notify(chSign, syscall.SIGINT, syscall.SIGTERM)
