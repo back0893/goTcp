@@ -2,7 +2,9 @@ package net
 
 import (
 	"context"
+	"fmt"
 	"github.com/back0893/goTcp/iface"
+	errors2 "github.com/back0893/goTcp/vendor/github.com/pkg/errors"
 	"log"
 	"net"
 	"os"
@@ -105,6 +107,13 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) Listen(ip string, port int) {
+	//记录异常退出
+	defer func() {
+		if err := recover(); err != nil {
+			stackerr := errors2.WithStack(err.(error))
+			log.Println(fmt.Printf("%+v", stackerr))
+		}
+	}()
 	s.Run(ip, port)
 	log.Println("接受停止或者ctrl-c停止")
 	chSign := make(chan os.Signal)

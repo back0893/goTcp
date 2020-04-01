@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/back0893/goTcp/iface"
 	"github.com/back0893/goTcp/utils"
+	errors2 "github.com/pkg/errors"
 	"log"
 	"net"
 	"sync"
@@ -89,7 +91,8 @@ func (c *Connection) readLoop() {
 		//如果有错误产生,这里捕获
 		//防止整个服务退出
 		if err := recover(); err != nil {
-			log.Println(err)
+			stackerr := errors2.WithStack(err.(error))
+			log.Println(fmt.Printf("%+v", stackerr))
 		}
 		c.Close()
 	}()
@@ -110,7 +113,8 @@ func (c *Connection) readLoop() {
 func (c *Connection) writeLoop() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(err)
+			stackerr := errors2.WithStack(err.(error))
+			log.Println(fmt.Printf("%+v", stackerr))
 		}
 		c.Close()
 	}()
@@ -136,7 +140,8 @@ func (c *Connection) writeLoop() {
 func (c *Connection) handLoop() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(err)
+			stackerr := errors2.WithStack(err.(error))
+			log.Println(fmt.Printf("%+v", stackerr))
 		}
 		c.Close()
 	}()
@@ -162,7 +167,8 @@ func (c *Connection) AsyncWrite(p iface.IPacket, timeout time.Duration) error {
 	}
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println(err)
+			stackerr := errors2.WithStack(err.(error))
+			log.Println(fmt.Printf("%+v", stackerr))
 		}
 	}()
 	if timeout == 0 {
