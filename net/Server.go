@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/back0893/goTcp/iface"
-	errors2 "github.com/back0893/goTcp/vendor/github.com/pkg/errors"
+	errors2 "github.com/pkg/errors"
 	"log"
 	"net"
 	"os"
