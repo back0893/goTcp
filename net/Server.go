@@ -110,7 +110,7 @@ func (s *Server) Listen(ip string, port int) {
 	//记录异常退出
 	defer func() {
 		if err := recover(); err != nil {
-			stackerr := errors2.WithStack(err.(error))
+			stackerr := errors2.WithStack(errors2.New(fmt.Sprintln(err)))
 			log.Println(fmt.Printf("%+v", stackerr))
 		}
 	}()

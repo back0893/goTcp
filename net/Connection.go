@@ -91,7 +91,7 @@ func (c *Connection) readLoop() {
 		//如果有错误产生,这里捕获
 		//防止整个服务退出
 		if err := recover(); err != nil {
-			stackerr := errors2.WithStack(err.(error))
+			stackerr := errors2.WithStack(errors2.New(fmt.Sprintln(err)))
 			log.Println(fmt.Printf("%+v", stackerr))
 		}
 		c.Close()
@@ -113,7 +113,7 @@ func (c *Connection) readLoop() {
 func (c *Connection) writeLoop() {
 	defer func() {
 		if err := recover(); err != nil {
-			stackerr := errors2.WithStack(err.(error))
+			stackerr := errors2.WithStack(errors2.New(fmt.Sprintln(err)))
 			log.Println(fmt.Printf("%+v", stackerr))
 		}
 		c.Close()
@@ -140,7 +140,7 @@ func (c *Connection) writeLoop() {
 func (c *Connection) handLoop() {
 	defer func() {
 		if err := recover(); err != nil {
-			stackerr := errors2.WithStack(err.(error))
+			stackerr := errors2.WithStack(errors2.New(fmt.Sprintln(err)))
 			log.Println(fmt.Printf("%+v", stackerr))
 		}
 		c.Close()
@@ -167,7 +167,7 @@ func (c *Connection) AsyncWrite(p iface.IPacket, timeout time.Duration) error {
 	}
 	defer func() {
 		if err := recover(); err != nil {
-			stackerr := errors2.WithStack(err.(error))
+			stackerr := errors2.WithStack(errors2.New(fmt.Sprintln(err)))
 			log.Println(fmt.Printf("%+v", stackerr))
 		}
 	}()
