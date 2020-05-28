@@ -25,7 +25,6 @@ type Connection struct {
 	packetSendChan    chan iface.IPacket
 	packetReceiveChan chan iface.IPacket
 	conId             uint32
-	buffer            *bufio.Reader //包装tcpConn,方便读取
 	event             iface.IEventWatch
 	protocol          iface.IProtocol
 	cancelFunc        context.CancelFunc
@@ -37,7 +36,6 @@ func NewConn(ctx context.Context, conn *net.TCPConn, wg *sync.WaitGroup, event i
 		conId:             conId,
 		packetSendChan:    make(chan iface.IPacket, utils.GlobalConfig.GetInt("PacketSendChanLimit")),
 		packetReceiveChan: make(chan iface.IPacket, utils.GlobalConfig.GetInt("packetReceiveChan")),
-		buffer:            bufio.NewReader(conn),
 		extraData:         &sync.Map{},
 		wg:                wg,
 		event:             event,
@@ -55,9 +53,6 @@ func (c *Connection) GetExtraMap() *sync.Map {
 }
 func (c *Connection) SetExtraData(key interface{}, value interface{}) {
 	c.extraData.Store(key, value)
-}
-func (c *Connection) GetBuffer() *bufio.Reader {
-	return c.buffer
 }
 func (c *Connection) GetId() uint32 {
 	return c.conId
@@ -96,17 +91,24 @@ func (c *Connection) readLoop() {
 		}
 		c.Close()
 	}()
-	for {
+	reader := bufio.NewScanner(c.conn)
+	fn := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		select {
 		case <-c.ctx.Done():
-			return
+			return 0, nil, errors.New("结束")
 		default:
-
 		}
-		p, err := c.protocol.UnPack(c)
-		if err != nil {
-			return
+		if atEOF && len(data) == 0 {
+			return 0, nil, errors.New("结束")
 		}
+		if c.protocol == nil {
+			return len(data), data, nil
+		}
+		return c.protocol.UnPack(data, atEOF)
+	}
+	reader.Split(fn)
+	for reader.Scan() {
+		p := c.protocol.Decode(reader.Bytes())
 		c.packetReceiveChan <- p
 	}
 }

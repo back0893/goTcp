@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	client, err := net.Dial("tcp", "127.0.0.1:8001")
+	client, err := net.Dial("tcp", "127.0.0.1:10086")
 	if err != nil {
 		panic(err)
 	}
@@ -19,6 +19,7 @@ func main() {
 	}
 	writer.Flush()
 	log.Println(nn)
-	ml, _ := reader.ReadBytes('\n')
-	log.Println(string(ml))
+	ml := make([]byte, 1024)
+	n, _ := reader.Read(ml)
+	log.Println(string(ml[:n]))
 }
