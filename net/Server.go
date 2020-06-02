@@ -111,7 +111,7 @@ func (s *Server) Listen(ip string, port int) {
 	defer func() {
 		if err := recover(); err != nil {
 			stackerr := errors2.WithStack(errors2.New(fmt.Sprintln(err)))
-			log.Println(fmt.Printf("%+v", stackerr))
+			log.Printf("%+v", stackerr)
 		}
 	}()
 	s.Run(ip, port)
