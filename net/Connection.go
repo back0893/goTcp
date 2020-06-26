@@ -155,7 +155,16 @@ func (c *Connection) handLoop() {
 			if c.IsClosed() {
 				return
 			}
-			c.event.Message(c.ctx, p, c)
+			work := utils.GlobalConfig.GetBool("work.start")
+			if work {
+				Pool.Add(func(ctx context.Context, packet iface.IPacket, connection iface.IConnection) func() {
+					return func() {
+						c.event.Message(ctx, packet, connection)
+					}
+				}(c.ctx, p, c))
+			} else {
+				c.event.Message(c.ctx, p, c)
+			}
 		}
 	}
 }
