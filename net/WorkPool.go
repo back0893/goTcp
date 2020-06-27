@@ -8,10 +8,10 @@ import (
 
 var Pool *WorkPool
 
-func init() {
+func StartWorkPool() {
 	if utils.GlobalConfig.GetBool("work.Start") {
-		utils.GlobalConfig.SetDefault("workBuffer", 5)
-		utils.GlobalConfig.SetDefault("workSize", 5)
+		utils.GlobalConfig.SetDefault("work.Buffer", 5)
+		utils.GlobalConfig.SetDefault("work.Size", 5)
 	}
 	Pool = NewWorkPool()
 	Pool.Start()
@@ -34,8 +34,8 @@ func (w *WorkPool) Close() {
 }
 
 func NewWorkPool() *WorkPool {
-	workBuffer := utils.GlobalConfig.GetInt("workBuffer")
-	workSize := utils.GlobalConfig.GetInt("workSize")
+	workBuffer := utils.GlobalConfig.GetInt("work.Buffer")
+	workSize := utils.GlobalConfig.GetInt("work.Size")
 	return &WorkPool{
 		tasks:   make(chan func(), workBuffer),
 		start:   make(chan *struct{}),
