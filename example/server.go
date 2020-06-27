@@ -33,8 +33,8 @@ func (p protocol) UnPack(data []byte, atEOF bool) (advance int, token []byte, er
 	return bufio.ScanLines(data, atEOF)
 }
 
-func (p protocol) Decode(data []byte) iface.IPacket {
-	return &packet{data}
+func (p protocol) Decode(data []byte) (iface.IPacket, error) {
+	return &packet{data}, nil
 }
 
 func (p protocol) Pack(pack iface.IPacket) ([]byte, error) {

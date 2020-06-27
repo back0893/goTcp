@@ -109,7 +109,12 @@ func (c *Connection) readLoop() {
 			if !ok {
 				return
 			}
-			c.packetReceiveChan <- c.protocol.Decode(raw)
+			if pkt, err := c.protocol.Decode(raw); err != nil {
+				//解析失败
+				log.Printf("解析失败,%s", err.Error())
+			} else {
+				c.packetReceiveChan <- pkt
+			}
 		}
 	}
 }
