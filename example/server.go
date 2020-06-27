@@ -50,12 +50,13 @@ func (p *packet) Serialize() ([]byte, error) {
 }
 
 func main() {
-	utils.GlobalConfig.Load("json", "./app.json")
+	utils.GlobalConfig.Load("json", "./example/app.json")
 	s := net.NewServer()
 	s.AddEvent(&event{})
 	s.AddProtocol(&protocol{})
 	ip := utils.GlobalConfig.GetString("Ip")
 	port := utils.GlobalConfig.GetInt("Port")
+	net.StartWorkPool()
 
 	s.Listen(ip, port)
 }

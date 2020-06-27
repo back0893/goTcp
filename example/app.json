@@ -1,4 +1,9 @@
 {
   "ip": "0.0.0.0",
-  "port": 10086
+  "port": 10086,
+  "work": {
+    "start": true,
+    "size": 3,
+    "buffer": 1
+  }
 }

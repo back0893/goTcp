@@ -91,25 +91,26 @@ func (c *Connection) readLoop() {
 		}
 		c.Close()
 	}()
-	reader := bufio.NewScanner(c.conn)
-	fn := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+
+	bc := make(chan []byte, 10)
+	go func() {
+		defer log.Println("close bc.....")
+		reader := bufio.NewScanner(c.conn)
+		reader.Split(c.protocol.UnPack)
+		for reader.Scan() {
+			bc <- reader.Bytes()
+		}
+		close(bc)
+	}()
+	for {
 		select {
 		case <-c.ctx.Done():
-			return 0, nil, errors.New("结束")
-		default:
+		case raw, ok := <-bc:
+			if !ok {
+				return
+			}
+			c.packetReceiveChan <- c.protocol.Decode(raw)
 		}
-		if atEOF && len(data) == 0 {
-			return 0, nil, errors.New("结束")
-		}
-		if c.protocol == nil {
-			return len(data), data, nil
-		}
-		return c.protocol.UnPack(data, atEOF)
-	}
-	reader.Split(fn)
-	for reader.Scan() {
-		p := c.protocol.Decode(reader.Bytes())
-		c.packetReceiveChan <- p
 	}
 }
 func (c *Connection) writeLoop() {
@@ -155,7 +156,16 @@ func (c *Connection) handLoop() {
 			if c.IsClosed() {
 				return
 			}
-			c.event.Message(c.ctx, p, c)
+			work := utils.GlobalConfig.GetBool("work.start")
+			if work {
+				Pool.Add(func(ctx context.Context, packet iface.IPacket, connection iface.IConnection) func() {
+					return func() {
+						c.event.Message(ctx, packet, connection)
+					}
+				}(c.ctx, p, c))
+			} else {
+				c.event.Message(c.ctx, p, c)
+			}
 		}
 	}
 }
