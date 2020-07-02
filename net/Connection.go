@@ -154,6 +154,7 @@ func (c *Connection) handLoop() {
 		c.Close()
 	}()
 	for {
+		work := utils.GlobalConfig.GetBool("work.start")
 		select {
 		case <-c.ctx.Done():
 			return
@@ -161,7 +162,6 @@ func (c *Connection) handLoop() {
 			if c.IsClosed() {
 				return
 			}
-			work := utils.GlobalConfig.GetBool("work.start")
 			if work {
 				Pool.Add(func(ctx context.Context, packet iface.IPacket, connection iface.IConnection) func() {
 					return func() {
