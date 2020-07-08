@@ -96,6 +96,10 @@ func (c *Connection) readLoop() {
 	go func() {
 		defer log.Println("close bc.....")
 		reader := bufio.NewScanner(c.conn)
+		maxScanTokenSize := utils.GlobalConfig.GetInt("maxTokenSize")
+		if maxScanTokenSize > bufio.MaxScanTokenSize {
+			reader.Buffer(make([]byte, 4096, 4096), maxScanTokenSize)
+		}
 		reader.Split(c.protocol.UnPack)
 		for reader.Scan() {
 			bc <- reader.Bytes()
