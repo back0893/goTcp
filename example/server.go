@@ -56,7 +56,7 @@ func main() {
 	s.AddProtocol(&protocol{})
 	ip := utils.GlobalConfig.GetString("Ip")
 	port := utils.GlobalConfig.GetInt("Port")
-	net.StartWorkPool()
+	utils.StartWorkPool()
 
 	s.Listen(ip, port)
 }

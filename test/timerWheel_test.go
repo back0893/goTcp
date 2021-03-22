@@ -2,14 +2,14 @@ package test
 
 import (
 	"context"
-	"github.com/back0893/goTcp/net"
+	"github.com/back0893/goTcp/utils"
 	"log"
 	"testing"
 	"time"
 )
 
 func TestTimeWheel(t *testing.T) {
-	wheel := net.NewTimingWheel(context.Background())
+	wheel := utils.NewTimingWheel(context.Background())
 	wheel.AddTimer(time.Now(), 1*time.Second, func() {
 		log.Println("1===1")
 	})
@@ -22,7 +22,7 @@ func TestTimeWheel(t *testing.T) {
 	time.Sleep(4 * time.Second)
 }
 func TestTimeWheelCancel(t *testing.T) {
-	wheel := net.NewTimingWheel(context.Background())
+	wheel := utils.NewTimingWheel(context.Background())
 	id := wheel.AddTimer(time.Now(), 1*time.Second, func() {
 		log.Println("1===1")
 	})

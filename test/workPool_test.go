@@ -3,7 +3,6 @@ package test
 import (
 	"errors"
 	"fmt"
-	"github.com/back0893/goTcp/net"
 	"github.com/back0893/goTcp/utils"
 	"log"
 	"sync"
@@ -16,11 +15,11 @@ type test struct {
 
 func init() {
 	utils.GlobalConfig.Load("json", "./app.json")
-	utils.GlobalConfig.SetDefault("workBuffer", 5)
-	utils.GlobalConfig.SetDefault("workSize", 5)
+	utils.GlobalConfig.SetDefault("work.buffer", 5)
+	utils.GlobalConfig.SetDefault("work.size", 5)
 }
 func TestWorkPool(t *testing.T) {
-	pool := net.NewWorkPool()
+	pool := utils.NewWorkPool()
 	pool.Start()
 	wg := sync.WaitGroup{}
 	wg.Add(10)
@@ -36,7 +35,7 @@ func TestWorkPool(t *testing.T) {
 	pool.Close()
 }
 func TestWorkPoolExit(t *testing.T) {
-	pool := net.NewWorkPool()
+	pool := utils.NewWorkPool()
 	pool.Start()
 	for i := 0; i < 5; i++ {
 		pool.Add(func() {
@@ -58,7 +57,7 @@ func TestWorkPoolExit(t *testing.T) {
 }
 
 func TestWorkPoolClose(t *testing.T) {
-	pool := net.NewWorkPool()
+	pool := utils.NewWorkPool()
 	pool.Start()
 	pool.Close()
 	pool.Add(func() {
@@ -66,7 +65,7 @@ func TestWorkPoolClose(t *testing.T) {
 	})
 }
 func TestWorkPoolWithStruct(t *testing.T) {
-	pool := net.NewWorkPool()
+	pool := utils.NewWorkPool()
 	pool.Start()
 	wg := sync.WaitGroup{}
 	wg.Add(10)

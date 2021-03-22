@@ -167,7 +167,7 @@ func (c *Connection) handLoop() {
 				return
 			}
 			if work {
-				Pool.Add(func(ctx context.Context, packet iface.IPacket, connection iface.IConnection) func() {
+				utils.Pool.Add(func(ctx context.Context, packet iface.IPacket, connection iface.IConnection) func() {
 					return func() {
 						c.event.Message(ctx, packet, connection)
 					}

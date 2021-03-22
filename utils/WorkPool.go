@@ -1,7 +1,6 @@
-package net
+package utils
 
 import (
-	"github.com/back0893/goTcp/utils"
 	"log"
 	"sync"
 )
@@ -9,9 +8,9 @@ import (
 var Pool *WorkPool
 
 func StartWorkPool() {
-	if utils.GlobalConfig.GetBool("work.Start") {
-		utils.GlobalConfig.SetDefault("work.Buffer", 5)
-		utils.GlobalConfig.SetDefault("work.Size", 5)
+	if GlobalConfig.GetBool("work.Start") {
+		GlobalConfig.SetDefault("work.Buffer", 5)
+		GlobalConfig.SetDefault("work.Size", 5)
 	}
 	Pool = NewWorkPool()
 	Pool.Start()
@@ -34,8 +33,8 @@ func (w *WorkPool) Close() {
 }
 
 func NewWorkPool() *WorkPool {
-	workBuffer := utils.GlobalConfig.GetInt("work.Buffer")
-	workSize := utils.GlobalConfig.GetInt("work.Size")
+	workBuffer := GlobalConfig.GetInt("work.Buffer")
+	workSize := GlobalConfig.GetInt("work.Size")
 	return &WorkPool{
 		tasks:   make(chan func(), workBuffer),
 		start:   make(chan *struct{}),
@@ -64,7 +63,6 @@ func (w *WorkPool) Work() {
 	for fn := range w.tasks {
 		fn()
 	}
-
 }
 func (w *WorkPool) listenWorkStart() {
 	for _ = range w.start {
