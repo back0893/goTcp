@@ -3,6 +3,7 @@ package net
 import (
 	"container/heap"
 	"context"
+	"log"
 	"sync"
 	"time"
 )
@@ -12,7 +13,8 @@ import (
 */
 
 var (
-	timersId *AtomicInt64
+	timersId    *AtomicInt64
+	timingWheel *TimingWheel
 )
 
 func init() {
@@ -104,6 +106,14 @@ type TimingWheel struct {
 	cancelChan chan int64
 }
 
+func InitTimingWheel(ctx context.Context) {
+	if timingWheel != nil {
+		log.Println("全局定时器已经启动,请不要重复启动")
+		return
+	}
+	timingWheel = NewTimingWheel(ctx)
+	go timingWheel.Start()
+}
 func NewTimingWheel(ctx context.Context) *TimingWheel {
 	h := make(TimerHeapType, 0)
 	wheel := &TimingWheel{

@@ -69,7 +69,7 @@ func (s *Server) Run(ip string, port int) {
 		log.Print(err)
 		return
 	}
-	NewTimingWheel(s.GetContext())
+	InitTimingWheel(s.GetContext())
 	go s.accept()
 	go func() {
 		var conId uint32 = 0
