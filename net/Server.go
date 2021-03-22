@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/back0893/goTcp/iface"
-	"github.com/back0893/goTcp/utils"
 	errors2 "github.com/pkg/errors"
 	"log"
 	"net"
@@ -70,7 +69,7 @@ func (s *Server) Run(ip string, port int) {
 		log.Print(err)
 		return
 	}
-	utils.InitTimingWheel(s.GetContext())
+	NewTimingWheel(s.GetContext())
 	go s.accept()
 	go func() {
 		var conId uint32 = 0
